@@ -1,0 +1,4 @@
+libname abc "//client/D$/project data";
+data abcd;
+set abc.abc;
+run;
