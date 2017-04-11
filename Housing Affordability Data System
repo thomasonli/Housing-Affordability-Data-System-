@@ -1,4 +1,23 @@
-libname abc "//client/D$/project data";
-data abcd;
-set abc.abc;
+/*** in this step is to import the dataset and export it into R******/
+/******also we can get more information from the label of the SAS file for each attribute***********/
+
+Libname hads "//client/A$/Users/Thomason_PC/Desktop/Ryerson/CKME136";
+Filename Hads2013 "hads.hads2013n.sas7bdat";
+
+/* copy original data and work on the table*/
+data hads.hads2013n_a;
+set hads.hads2013n;
 run;
+/*list out all the variable */
+proc contents
+     data = hads.hads2013n_a
+          noprint
+          out = hads.data_info
+               (keep = name varnum label);
+run;
+
+proc export data=hads.attrdesc
+dbms=xlsx
+outfile="hads.attrdesc.xls"
+replace;
+    run;
