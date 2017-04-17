@@ -1,0 +1,758 @@
+---
+title: 'Capstone Project - Factors that Affect the Housing Ownership '
+output:
+  html_document: default
+  pdf_document: default
+---
+
+#Instructions
+
+## THis document is to show how the data processes and transfromes, also
+## how to apply the method and then analysis the data for the project 
+## Factors that Affect the Housing Ownership
+## 
+
+
+## load required R libraries
+```{ r echo=TRUE}
+install.packages("knitr")
+library(knitr)
+install.packages("rmarkdown")
+library(rmarkdown)
+install.packages("sas7bdat")
+library(sas7bdat)
+install.packages("dplyr")
+library(dplyr)
+```
+
+### LOAD data from the HADS website
+### Check for attribute, Correlation using pearson for numeric variable or spearman for character variable
+### and remove the attributes with more than lots of missing data 
+
+## check attrible of the dataset and check for missing variable
+## since control number is primary varible, there is no missing within
+```{r echo=TRUE}
+temp <- tempfile()
+download.file("https://www.huduser.gov/portal/datasets/hads/hads2013n_ASCII.zip",temp)
+hads2013n <- read.csv(unz(temp, "thads2013n.txt"), header = FALSE, skip = 1)
+hads2013n.names <- readLines(unz(temp, "thads2013n.txt"), n = 1)
+names(hads2013n) <- unlist(strsplit(hads2013n.names, ","))
+str(hads2013n)
+```
+
+
+## apply change for missing and error records and Duplicated Column
+## notice by reading data description variable like BEDRMS and FMTBEDRMS are same but in different format
+## and by comparing the unformated and formated the column, it shows formated columns are more reasonable
+## to be used.
+```{r echo=TRUE}
+## check FMTOWNRENT and TENURE : 2 option, either Onwer or Renter
+str(hads2013n$FMTOWNRENT)
+str(hads2013n$TENURE)
+table(hads2013n$FMTOWNRENT)
+table(hads2013n$TENURE)
+
+## Hence TENURE contains some error '-6'/missing rows. we will use FMTOWNRENT and Drop TENURE
+hads2013n_c <- subset(hads2013n,select = -c(TENURE))
+## check BEDRMS and FMTBEDRMS
+str(hads2013n$BEDRMS)
+str(hads2013n$FMTBEDRMS)
+table(hads2013n$BEDRMS)
+table(hads2013n$FMTBEDRMS)
+
+
+plot(hads2013n_c$FMTOWNRENT)
+## FMTBEDRMS is under sorted by group, drop BEDRMS
+hads2013n_c <- subset(hads2013n_c,select = -c(BEDRMS))
+ 
+plot(hads2013n_c$FMTBEDRMS,xlab="FMTBEDRMS")
+## check ASSISTED & FMTASSISTED: 2 options not assisted or assisted.
+str(hads2013n$ASSISTED)
+str(hads2013n$FMTASSISTED)
+table(hads2013n$ASSISTED)
+table(hads2013n$FMTASSISTED)
+## since test try to remove all missing rows from ASSISTED and notice all Owner is removed 
+## we can say all assist is for renter only. we can remove both column ASSISTED & FMTASSISTED
+hads2013n_c2 <- hads2013n[hads2013n$ASSISTED > -1,]
+table(hads2013n$FMTASSISTED)
+table(hads2013n_c2$FMTASSISTED)
+table(hads2013n_c2$FMTOWNRENT)
+rm(hads2013n_c2)
+hads2013n_c <- subset(hads2013n_c,select = -c(ASSISTED, FMTASSISTED))
+
+## REGION & FMTREGION :The four Census regions. Drop FMTREGION
+str(hads2013n$REGION)
+str(hads2013n$FMTREGION)
+table(hads2013n$REGION)
+table(hads2013n$FMTREGION)
+hads2013n_c <- subset(hads2013n_c,select = -c(FMTREGION))
+plot(hads2013n_c$REGION,xlab="REGION")
+
+## METRO3 & FMTMETRO3 :indicate whether a unit is in a central city, suburb, or outside a 
+## metropolitan area. Drop FMTMETRO3
+str(hads2013n$METRO3)
+str(hads2013n$FMTMETRO3)
+table(hads2013n$METRO3)
+table(hads2013n$FMTMETRO3)
+hads2013n_c <- subset(hads2013n_c,select = -c(FMTMETRO3))
+plot(hads2013n_c$METRO3,xlab="METRO3")
+
+
+##For the Variable below are Mortgage payments at 6, 8, and 12 percent interest rates
+##COST12	Housing cost at 12 percent interest
+##COST06	Housing cost at 6 percent interest
+##COST08	Housing cost at 8 percent interest
+##COSTMED	Housing cost at Median interest
+
+
+##COST06RELFMRCAT, FMTCOST06RELFMRCAT, COST06RELFMRPCT
+##Cost06 Relative to FMR (Category), Cost06 Relative to FMR (Category), Cost06 Relative to FMR (Percent)
+str(hads2013n$COST06RELFMRCAT)
+str(hads2013n$FMTCOST06RELFMRCAT)
+str(hads2013n$COST06RELFMRPCT)
+table(hads2013n$COST06RELFMRCAT)
+table(hads2013n$FMTCOST06RELFMRCAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST06RELFMRCAT))
+plot(hads2013n_c$FMTCOST06RELFMRCAT,xlab="FMTCOST06RELFMRCAT")
+
+##COST06RELAMICAT,FMTCOST06RELAMICAT, COST06RELAMIPCT
+##Cost06 Relative to Median Income (Category), Cost06 Relative to Median Income (Category), 
+##Cost06 Relative to Median Income (Percent)
+## Drop COST06RELAMICAT
+str(hads2013n$COST06RELAMICAT)
+str(hads2013n$FMTCOST06RELAMICAT)
+str(hads2013n$COST06RELAMIPCT)
+table(hads2013n$COST06RELAMICAT)
+table(hads2013n$FMTCOST06RELAMICAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST06RELAMICAT))
+
+##COST06RELPOVCAT		Cost06 Relative to Poverty Income (Category)
+##FMTCOST06RELPOVCAT		Cost06 Relative to Poverty Income (Category)
+##COST06RELPOVPCT		Cost06 Relative to Poverty Income (Percent)
+str(hads2013n$COST06RELPOVCAT)
+str(hads2013n$FMTCOST06RELPOVCAT)
+str(hads2013n$COST06RELPOVPCT)
+table(hads2013n$COST06RELPOVCAT)
+table(hads2013n$FMTCOST06RELPOVCAT)
+
+##4438 missing at FMTCOST06RELPOVCAT, 6.88% of the rows to the entire dataset
+## check the impact if we Remove the missing row
+hads2013n_c2 <- hads2013n[hads2013n$COST06RELPOVCAT > 0,]
+table(hads2013n_c2$COST06RELPOVCAT)
+table(hads2013n_c2$FMTOWNRENT)
+table(hads2013n$FMTOWNRENT)
+## comparing the result owner drop from 37146 to 35852 and renter drop from 27389 to 24245
+## so we dropp the missing rows and remove the testing dataset and the COST06RELPOVCAT column
+rm(hads2013n_c2)
+hads2013n_c <- hads2013n_c[hads2013n$COST06RELPOVCAT > 0,]
+hads2013n_c <- subset(hads2013n_c,select = -c(COST06RELPOVCAT))
+
+##SAME to all the following
+#COST08RELFMRCAT	Cost08 Relative to FMR (Category)
+#FMTCOST08RELFMRCAT	Cost08 Relative to FMR (Category)
+#COST08RELFMRPCT	Cost08 Relative to FMR (Percent)
+str(hads2013n_c$COST08RELFMRCAT)
+str(hads2013n_c$FMTCOST08RELFMRCAT)
+str(hads2013n_c$COST08RELFMRPCT)
+table(hads2013n_c$COST08RELFMRCAT)
+table(hads2013n_c$FMTCOST08RELFMRCAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST08RELFMRCAT))
+
+##COST08RELAMICAT	Cost08 Relative to Median Income (Category)
+##FMTCOST08RELAMICAT	Cost08 Relative to Median Income (Category)
+##COST08RELAMIPCT	Cost08 Relative to Median Income (Percent)
+str(hads2013n_c$COST08RELAMICAT)
+str(hads2013n_c$FMTCOST08RELAMICAT)
+str(hads2013n_c$COST08RELAMIPCT)
+table(hads2013n_c$COST08RELAMICAT)
+table(hads2013n_c$FMTCOST08RELAMICAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST08RELAMICAT))
+
+##COST08RELPOVCAT	Cost08 Relative to Poverty Income (Category)
+##FMTCOST08RELPOVCAT	Cost08 Relative to Poverty Income (Category)
+##COST08RELPOVPCT	Cost08 Relative to Poverty Income (Percent)
+str(hads2013n_c$COST08RELPOVCAT)
+str(hads2013n_c$FMTCOST08RELPOVCAT)
+str(hads2013n_c$COST08RELPOVPCT)
+table(hads2013n_c$COST08RELPOVCAT)
+table(hads2013n_c$FMTCOST08RELPOVCAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST08RELPOVCAT))
+
+##COST12RELFMRCAT	Cost12 Relative to FMR (Category)
+##FMTCOST12RELFMRCAT	Cost12 Relative to FMR (Category)
+##COST12RELFMRPCT	Cost12 Relative to FMR (Percent)
+str(hads2013n_c$COST12RELFMRCAT)
+str(hads2013n_c$FMTCOST12RELFMRCAT)
+str(hads2013n_c$COST12RELFMRPCT)
+table(hads2013n_c$COST12RELFMRCAT)
+table(hads2013n_c$FMTCOST12RELFMRCAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST12RELFMRCAT))
+
+##COST12RELAMICAT	Cost12 Relative to Median Income (Category)
+##FMTCOST12RELAMICAT	Cost12 Relative to Median Income (Category)
+##COST12RELAMIPCT	Cost12 Relative to Median Income (Percent)
+str(hads2013n_c$COST12RELAMICAT)
+str(hads2013n_c$FMTCOST12RELAMICAT)
+str(hads2013n_c$COST12RELAMIPCT)
+table(hads2013n_c$COST12RELAMICAT)
+table(hads2013n_c$FMTCOST12RELAMICAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST12RELAMICAT))
+
+
+##COST12RELPOVCAT	Cost12 Relative to Poverty Income (Category)
+##FMTCOST12RELPOVCAT	Cost12 Relative to Poverty Income (Category)
+##COST12RELPOVPCT	Cost12 Relative to Poverty Income (Percent)
+str(hads2013n_c$COST12RELPOVCAT)
+str(hads2013n_c$FMTCOST12RELPOVCAT)
+str(hads2013n_c$COST12RELPOVPCT)
+table(hads2013n_c$COST12RELPOVCAT)
+table(hads2013n_c$FMTCOST12RELPOVCAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COST12RELPOVCAT))
+
+##COSTMedRELFMRCAT	CostMed Relative to FMR (Category)
+##FMTCOSTMEDRELFMRCAT	CostMed Relative to FMR (Category)
+##COSTMedRELFMRPCT	CostMed Relative to FMR (Percent)
+str(hads2013n_c$COSTMedRELFMRCAT)
+str(hads2013n_c$FMTCOSTMEDRELFMRCAT)
+str(hads2013n_c$COSTMedRELFMRPCT)
+table(hads2013n_c$COSTMedRELFMRCAT)
+table(hads2013n_c$FMTCOSTMEDRELFMRCAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COSTMedRELFMRCAT))
+
+##COSTMedRELAMICAT	CostMed Relative to Median Income (Category)
+##FMTCOSTMEDRELAMICAT	CostMed Relative to Median Income (Category)
+##COSTMedRELAMIPCT	CostMed Relative to Median Income (Percent)
+str(hads2013n_c$COSTMedRELAMICAT)
+str(hads2013n_c$FMTCOSTMEDRELAMICAT)
+str(hads2013n_c$COSTMedRELAMIPCT)
+table(hads2013n_c$COSTMedRELAMICAT)
+table(hads2013n_c$FMTCOSTMEDRELAMICAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COSTMedRELAMICAT))
+
+##COSTMedRELPOVCAT	CostMed Relative to Poverty Income (Category)
+##FMTCOSTMEDRELPOVCAT	CostMed Relative to Poverty Income (Category)
+##COSTMedRELPOVPCT	CostMed Relative to Poverty Income (Percent)
+str(hads2013n_c$COSTMedRELPOVCAT)
+str(hads2013n_c$FMTCOSTMEDRELPOVCAT)
+str(hads2013n_c$COSTMedRELPOVPCT)
+table(hads2013n_c$COSTMedRELPOVCAT)
+table(hads2013n_c$FMTCOSTMEDRELPOVCAT)
+hads2013n_c <- subset(hads2013n_c,select = -c(COSTMedRELPOVCAT))
+
+##VALUE	Current market value of unit
+str(hads2013n_c$VALUE)
+table(hads2013n_c$VALUE,useNA = 'always')
+##Noticed that there are 24245 and 434 are error with value (-6 or 1),
+24679/nrow(hads2013n_c)
+##41% of this column in the dataset is missing. 
+##Test to drop the affect of dropping the error rows.
+hads2013n_c2 <- hads2013n[hads2013n$VALUE > 2,]
+table(hads2013n_c2$VALUE,useNA = 'always')
+table(hads2013n_c2$FMTOWNRENT,useNA = 'always')
+table(hads2013n_c$FMTOWNRENT,useNA = 'always')
+## by comparing two tables, all the Renter got removed from the removing the error rows.
+## so we drop the value column
+rm(hads2013n_c2)
+hads2013n_c <- subset(hads2013n_c,select = -c(VALUE))
+
+
+
+## INCRELFMRCAT	HH Income Relative to FMR (Category)
+## FMTINCRELFMRCAT	HH Income Relative to FMR (Category)
+## INCRELFMRPCT	HH Income Relative to FMR (Percent)
+table(hads2013n_c$INCRELFMRCAT,useNA = 'always')
+table(hads2013n_c$FMTINCRELFMRCAT,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(INCRELFMRCAT))
+
+
+
+##INCRELPOVCAT	HH Income Relative to Poverty Income (Category)
+##FMTINCRELPOVCAT	HH Income Relative to Poverty Income (Category)
+##INCRELPOVPCT	HH Income Relative to Poverty Income (Percent)
+table(hads2013n_c$INCRELPOVCAT,useNA = 'always')
+table(hads2013n_c$FMTINCRELPOVCAT,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(INCRELPOVCAT))
+
+
+
+##STATUS	Interview status
+table(hads2013n_c$STATUS,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(STATUS))
+
+
+## FMTSTATUS	Occupancy Status
+table(hads2013n_c$FMTSTATUS,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(FMTSTATUS))
+
+
+
+##STRUCTURETYPE	Recoded structure type
+##TYPE	Structure type
+##FMTSTRUCTURETYPE	Structure Type
+str(hads2013n_c$STRUCTURETYPE)
+str(hads2013n_c$TYPE)
+str(hads2013n_c$FMTSTRUCTURETYPE)
+table(hads2013n_c$STRUCTURETYPE,useNA = 'always')
+table(hads2013n_c$TYPE,useNA = 'always')
+table(hads2013n_c$FMTSTRUCTURETYPE,useNA = 'always')
+hads2013n_c <- hads2013n_c[hads2013n_c$STRUCTURETYPE > 0,]
+hads2013n_c <- subset(hads2013n_c,select = -c(STRUCTURETYPE))
+
+
+
+
+##VACANCY	Vacancy status
+## all the of the rows are -6 drop column
+str(hads2013n_c$VACANCY)
+table(hads2013n_c$VACANCY,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(VACANCY))
+
+##BUILT	Year unit was built
+##FMTBUILT	YEAR UNIT WAS BUILT
+## notice that the group of '-5' in FMTBUILT is the the year before, we name it group 'before 1940'
+str(hads2013n_c$BUILT)
+str(hads2013n_c$FMTBUILT)
+table(hads2013n_c$BUILT,useNA = 'always')
+table(hads2013n_c$FMTBUILT,useNA = 'always')
+levels(hads2013n_c$FMTBUILT)[match("'-5'",levels(hads2013n_c$FMTBUILT))] <- "'Before 1940'"
+table(hads2013n_c$FMTBUILT,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(BUILT))
+
+##ZADEQ ADEQUACY OF UNIT
+##FMTZADEQ ADEQUACY OF UNIT
+str(hads2013n_c$ZADEQ)
+str(hads2013n_c$FMTZADEQ)
+table(hads2013n_c$ZADEQ,useNA = 'always')
+table(hads2013n_c$FMTZADEQ,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(ZADEQ))
+
+##OWNRENT		Tenure (adjusted)
+##FMTOWNRENT		Owner/Renter Status (adjusted)
+str(hads2013n_c$OWNRENT)
+str(hads2013n_c$FMTOWNRENT)
+table(hads2013n_c$OWNRENT,useNA = 'always')
+table(hads2013n_c$FMTOWNRENT,useNA = 'always')
+hads2013n_c <- subset(hads2013n_c,select = -c(OWNRENT))
+
+## Drop control since it's identical Veriable
+hads2013n_c <- subset(hads2013n_c,select = -c(CONTROL))
+
+```
+## test for the correlation between variables
+##peason for numeric variable and spearman for category variable
+```{r echo=TRUE}
+##check the variable is either factor or numeric
+nums <- sapply(hads2013n_c, is.numeric)
+cate<-sapply(hads2013n_c, is.factor)
+str(hads2013n_c[,cate])
+str(hads2013n_c[,nums])
+
+###
+##for Catergory vs Catergory Variables, simpson method is use to test the correlation 
+plot(table(hads2013n_c$METRO3,hads2013n_c$FMTOWNRENT),main="METRO3 VS FMTOWNRENT",xlab="METRO3",ylab="FMTOWNRENT")
+summary(glm(FMTOWNRENT ~ METRO3,family=binomial(link = "logit"),data=hads2013n_c))
+
+#This difference appears large enough to suggest that a relationship does 
+#exist between METRO3 and FMTOWNRENT.
+
+plot(table(hads2013n_c$REGION,hads2013n_c$FMTOWNRENT),main="REGION VS FMTOWNRENT",xlab="REGION",ylab="FMTOWNRENT")
+summary(glm(FMTOWNRENT ~ REGION,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears slightly enough to suggest that a relationship does 
+#exist between METRO3 and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTZADEQ,hads2013n_c$FMTOWNRENT),main="FMTZADEQ VS FMTOWNRENT",xlab="FMTZADEQ",ylab="FMTOWNRENT")
+summary(glm(FMTOWNRENT ~ FMTZADEQ,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTZADEQ and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTBUILT,hads2013n_c$FMTOWNRENT),main="FMTBUILT VS FMTOWNRENT",xlab="FMTBUILT",ylab="FMTOWNRENT")
+summary(glm(FMTOWNRENT ~ FMTBUILT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTBUILT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTSTRUCTURETYPE,hads2013n_c$FMTOWNRENT),main="FMTSTRUCTURETYPE VS FMTOWNRENT",xlab="FMTSTRUCTURETYPE",ylab="FMTOWNRENT")
+summary(glm(FMTOWNRENT ~ FMTSTRUCTURETYPE,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTSTRUCTURETYPE and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTBEDRMS,hads2013n_c$FMTOWNRENT),main="FMTBEDRMS VS FMTOWNRENT",xlab="FMTBEDRMS",ylab="FMTOWNRENT")
+summary(glm(FMTOWNRENT ~ FMTBEDRMS,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTBEDRMS and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST06RELPOVCAT,hads2013n_c$FMTOWNRENT),main="FMTCOST06RELPOVCAT VS FMTOWNRENT",xlab="FMTCOST06RELPOVCAT",ylab="FMTOWNRENT")
+summary(glm(FMTOWNRENT ~ FMTCOST06RELPOVCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST06RELPOVCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST08RELPOVCAT,hads2013n_c$FMTOWNRENT),main='FMTCOST08RELPOVCAT VS FMTOWNRENT',xlab='FMTCOST08RELPOVCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST08RELPOVCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST08RELPOVCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST12RELPOVCAT,hads2013n_c$FMTOWNRENT),main='FMTCOST12RELPOVCAT VS FMTOWNRENT',xlab='FMTCOST12RELPOVCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST12RELPOVCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST12RELPOVCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOSTMEDRELPOVCAT,hads2013n_c$FMTOWNRENT),main='FMTCOSTMEDRELPOVCAT VS FMTOWNRENT',xlab='FMTCOSTMEDRELPOVCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOSTMEDRELPOVCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOSTMEDRELPOVCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTINCRELPOVCAT,hads2013n_c$FMTOWNRENT),main='FMTINCRELPOVCAT VS FMTOWNRENT',xlab='FMTINCRELPOVCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTINCRELPOVCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTINCRELPOVCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST06RELFMRCAT,hads2013n_c$FMTOWNRENT),main='FMTCOST06RELFMRCAT VS FMTOWNRENT',xlab='FMTCOST06RELFMRCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST06RELFMRCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST06RELFMRCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST08RELFMRCAT,hads2013n_c$FMTOWNRENT),main='FMTCOST08RELFMRCAT VS FMTOWNRENT',xlab='FMTCOST08RELFMRCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST08RELFMRCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST08RELFMRCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST12RELFMRCAT,hads2013n_c$FMTOWNRENT),main='FMTCOST12RELFMRCAT VS FMTOWNRENT',xlab='FMTCOST12RELFMRCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST12RELFMRCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST12RELFMRCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOSTMEDRELFMRCAT,hads2013n_c$FMTOWNRENT),main='FMTCOSTMEDRELFMRCAT VS FMTOWNRENT',xlab='FMTCOSTMEDRELFMRCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOSTMEDRELFMRCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOSTMEDRELFMRCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTINCRELFMRCAT,hads2013n_c$FMTOWNRENT),main='FMTINCRELFMRCAT VS FMTOWNRENT',xlab='FMTINCRELFMRCAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTINCRELFMRCAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTINCRELFMRCAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST06RELAMICAT,hads2013n_c$FMTOWNRENT),main='FMTCOST06RELAMICAT VS FMTOWNRENT',xlab='FMTCOST06RELAMICAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST06RELAMICAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST06RELAMICAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST08RELAMICAT,hads2013n_c$FMTOWNRENT),main='FMTCOST08RELAMICAT VS FMTOWNRENT',xlab='FMTCOST08RELAMICAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST08RELAMICAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST08RELAMICAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOST12RELAMICAT,hads2013n_c$FMTOWNRENT),main='FMTCOST12RELAMICAT VS FMTOWNRENT',xlab='FMTCOST12RELAMICAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOST12RELAMICAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOST12RELAMICAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTCOSTMEDRELAMICAT,hads2013n_c$FMTOWNRENT),main='FMTCOSTMEDRELAMICAT VS FMTOWNRENT',xlab='FMTCOSTMEDRELAMICAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTCOSTMEDRELAMICAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTCOSTMEDRELAMICAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTINCRELAMICAT,hads2013n_c$FMTOWNRENT),main='FMTINCRELAMICAT VS FMTOWNRENT',xlab='FMTINCRELAMICAT',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTINCRELAMICAT,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTINCRELAMICAT and FMTOWNRENT.
+
+plot(table(hads2013n_c$FMTBURDEN,hads2013n_c$FMTOWNRENT),main='FMTBURDEN VS FMTOWNRENT',xlab='FMTBURDEN',ylab='FMTOWNRENT')
+summary(glm(FMTOWNRENT ~ FMTBURDEN,family=binomial(link = "logit"),data=hads2013n_c))
+#This difference appears large enough to suggest that a relationship does 
+#exist between FMTBURDEN and FMTOWNRENT.
+
+
+##
+##
+## FOr Catergory VS Numeric Variable
+hist(hads2013n_c$AGE1[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Age of head of household', xlab='AGE1', ylab='Count',col ='blue')
+hist(hads2013n_c$AGE1[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Age of head of household', xlab='Age', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$AGE1,xlab='FMTOWNRENT',ylab='AGE1')
+
+
+hist(hads2013n_c$LMED[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Area median income (average)', xlab='LMED', ylab='Count',col ='blue')
+hist(hads2013n_c$LMED[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Area median income (average)', xlab='LMED', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$LMED,xlab='FMTOWNRENT',ylab='LMED')
+
+
+hist(hads2013n_c$FMR[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Fair market rent (average)', xlab='FMR', ylab='Count',col ='blue')
+hist(hads2013n_c$FMR[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Fair market rent (average)', xlab='FMR', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$FMR,xlab='FMTOWNRENT',ylab='FMR')
+
+
+hist(hads2013n_c$L30[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Extremely low income limit (average)', xlab='L30', ylab='Count',col ='blue')
+hist(hads2013n_c$L30[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Extremely low income limit (average)', xlab='L30', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$L30,xlab='FMTOWNRENT',ylab='L30')
+
+
+hist(hads2013n_c$L50[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Very low income limit (average)', xlab='L50', ylab='Count',col ='blue')
+hist(hads2013n_c$L50[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Very low income limit (average)', xlab='L50', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$L50,xlab='FMTOWNRENT',ylab='L50')
+
+
+hist(hads2013n_c$L80[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Low income limit (average)', xlab='L80', ylab='Count',col ='blue')
+hist(hads2013n_c$L80[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Low income limit (average)', xlab='L80', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$L80,xlab='FMTOWNRENT',ylab='L80')
+
+
+hist(hads2013n_c$IPOV[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Poverty income', xlab='IPOV', ylab='Count',col ='blue')
+hist(hads2013n_c$IPOV[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Poverty income', xlab='IPOV', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$IPOV,xlab='FMTOWNRENT',ylab='IPOV')
+
+
+hist(hads2013n_c$TYPE[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Structure type', xlab='TYPE', ylab='Count',col ='blue')
+hist(hads2013n_c$TYPE[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Structure type', xlab='TYPE', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$TYPE,xlab='FMTOWNRENT',ylab='TYPE')
+
+
+hist(hads2013n_c$NUNITS[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= '# of units in building', xlab='NUNITS', ylab='Count',col ='blue')
+hist(hads2013n_c$NUNITS[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= '# of units in building', xlab='NUNITS', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$NUNITS,xlab='FMTOWNRENT',ylab='NUNITS')
+
+
+hist(hads2013n_c$ROOMS[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= '# of rooms in unit', xlab='ROOMS', ylab='Count',col ='blue')
+hist(hads2013n_c$ROOMS[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= '# of rooms in unit', xlab='ROOMS', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$ROOMS,xlab='FMTOWNRENT',ylab='ROOMS')
+
+
+hist(hads2013n_c$WEIGHT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Final weight using 1980 geography', xlab='WEIGHT', ylab='Count',col ='blue')
+hist(hads2013n_c$WEIGHT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Final weight using 1980 geography', xlab='WEIGHT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$WEIGHT,xlab='FMTOWNRENT',ylab='WEIGHT')
+
+
+hist(hads2013n_c$PER[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= '# of persons in household', xlab='PER', ylab='Count',col ='blue')
+hist(hads2013n_c$PER[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= '# of persons in household', xlab='PER', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$PER,xlab='FMTOWNRENT',ylab='PER')
+
+
+hist(hads2013n_c$ZINC2[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Household Income', xlab='ZINC2', ylab='Count',col ='blue')
+hist(hads2013n_c$ZINC2[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Household Income', xlab='ZINC2', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$ZINC2,xlab='FMTOWNRENT',ylab='ZINC2')
+
+
+hist(hads2013n_c$UTILITY[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Monthly utility cost', xlab='UTILITY', ylab='Count',col ='blue')
+hist(hads2013n_c$UTILITY[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Monthly utility cost', xlab='UTILITY', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$UTILITY,xlab='FMTOWNRENT',ylab='UTILITY')
+
+
+hist(hads2013n_c$OTHERCOST[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Insurance, condo, land rent, other mobile home fees', xlab='OTHERCOST', ylab='Count',col ='blue')
+hist(hads2013n_c$OTHERCOST[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Insurance, condo, land rent, other mobile home fees', xlab='OTHERCOST', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$OTHERCOST,xlab='FMTOWNRENT',ylab='OTHERCOST')
+
+
+hist(hads2013n_c$COST06[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Housing cost at 6 percent interest', xlab='COST06', ylab='Count',col ='blue')
+hist(hads2013n_c$COST06[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Housing cost at 6 percent interest', xlab='COST06', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST06,xlab='FMTOWNRENT',ylab='COST06')
+
+
+hist(hads2013n_c$COST12[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Housing cost at 12 percent interest', xlab='COST12', ylab='Count',col ='blue')
+hist(hads2013n_c$COST12[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Housing cost at 12 percent interest', xlab='COST12', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST12,xlab='FMTOWNRENT',ylab='COST12')
+
+
+hist(hads2013n_c$COST08[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Housing cost at 8 percent interest', xlab='COST08', ylab='Count',col ='blue')
+hist(hads2013n_c$COST08[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Housing cost at 8 percent interest', xlab='COST08', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST08,xlab='FMTOWNRENT',ylab='COST08')
+
+
+hist(hads2013n_c$COSTMED[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Housing cost at Median interest', xlab='COSTMED', ylab='Count',col ='blue')
+hist(hads2013n_c$COSTMED[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Housing cost at Median interest', xlab='COSTMED', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COSTMED,xlab='FMTOWNRENT',ylab='COSTMED')
+
+
+hist(hads2013n_c$TOTSAL[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Total Wage Income', xlab='TOTSAL', ylab='Count',col ='blue')
+hist(hads2013n_c$TOTSAL[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Total Wage Income', xlab='TOTSAL', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$TOTSAL,xlab='FMTOWNRENT',ylab='TOTSAL')
+
+
+hist(hads2013n_c$GLMED[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Growth-adjusted median income', xlab='GLMED', ylab='Count',col ='blue')
+hist(hads2013n_c$GLMED[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Growth-adjusted median income', xlab='GLMED', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$GLMED,xlab='FMTOWNRENT',ylab='GLMED')
+
+
+hist(hads2013n_c$GL30[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Growth-adjusted extremely low income', xlab='GL30', ylab='Count',col ='blue')
+hist(hads2013n_c$GL30[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Growth-adjusted extremely low income', xlab='GL30', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$GL30,xlab='FMTOWNRENT',ylab='GL30')
+
+
+hist(hads2013n_c$GL50[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Growth-adjusted very low income', xlab='GL50', ylab='Count',col ='blue')
+hist(hads2013n_c$GL50[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Growth-adjusted very low income', xlab='GL50', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$GL50,xlab='FMTOWNRENT',ylab='GL50')
+
+
+hist(hads2013n_c$GL80[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Growth-adjusted low income', xlab='GL80', ylab='Count',col ='blue')
+hist(hads2013n_c$GL80[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Growth-adjusted low income', xlab='GL80', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$GL80,xlab='FMTOWNRENT',ylab='GL80')
+
+
+hist(hads2013n_c$APLMED[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Median Income Adjusted for # of Persons', xlab='APLMED', ylab='Count',col ='blue')
+hist(hads2013n_c$APLMED[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Median Income Adjusted for # of Persons', xlab='APLMED', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$APLMED,xlab='FMTOWNRENT',ylab='APLMED')
+
+
+hist(hads2013n_c$ABL30[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Extremely Low Income Adjusted for # of Bedrooms', xlab='ABL30', ylab='Count',col ='blue')
+hist(hads2013n_c$ABL30[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Extremely Low Income Adjusted for # of Bedrooms', xlab='ABL30', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$ABL30,xlab='FMTOWNRENT',ylab='ABL30')
+
+
+hist(hads2013n_c$ABL50[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Very Low Income Adjusted for # of Bedrooms', xlab='ABL50', ylab='Count',col ='blue')
+hist(hads2013n_c$ABL50[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Very Low Income Adjusted for # of Bedrooms', xlab='ABL50', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$ABL50,xlab='FMTOWNRENT',ylab='ABL50')
+
+
+hist(hads2013n_c$ABL80[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Low Income Adjusted for # of Bedrooms', xlab='ABL80', ylab='Count',col ='blue')
+hist(hads2013n_c$ABL80[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Low Income Adjusted for # of Bedrooms', xlab='ABL80', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$ABL80,xlab='FMTOWNRENT',ylab='ABL80')
+
+
+hist(hads2013n_c$ABLMED[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Median Income Adjusted for # of Bedrooms', xlab='ABLMED', ylab='Count',col ='blue')
+hist(hads2013n_c$ABLMED[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Median Income Adjusted for # of Bedrooms', xlab='ABLMED', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$ABLMED,xlab='FMTOWNRENT',ylab='ABLMED')
+
+
+hist(hads2013n_c$BURDEN[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Housing cost as a fraction of income', xlab='BURDEN', ylab='Count',col ='blue')
+hist(hads2013n_c$BURDEN[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Housing cost as a fraction of income', xlab='BURDEN', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$BURDEN,xlab='FMTOWNRENT',ylab='BURDEN')
+
+
+hist(hads2013n_c$INCRELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'HH Income relative to AMI (percent)', xlab='INCRELAMIPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$INCRELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'HH Income relative to AMI (percent)', xlab='INCRELAMIPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$INCRELAMIPCT,xlab='FMTOWNRENT',ylab='INCRELAMIPCT')
+
+
+hist(hads2013n_c$INCRELAMICAT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'HH Income  relative to AMI (category)', xlab='INCRELAMICAT', ylab='Count',col ='blue')
+hist(hads2013n_c$INCRELAMICAT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'HH Income  relative to AMI (category)', xlab='INCRELAMICAT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$INCRELAMICAT,xlab='FMTOWNRENT',ylab='INCRELAMICAT')
+
+
+hist(hads2013n_c$INCRELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'HH Income Relative to Poverty Income (Percent)', xlab='INCRELPOVPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$INCRELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'HH Income Relative to Poverty Income (Percent)', xlab='INCRELPOVPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$INCRELPOVPCT,xlab='FMTOWNRENT',ylab='INCRELPOVPCT')
+
+
+hist(hads2013n_c$INCRELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'HH Income Relative to FMR (Percent)', xlab='INCRELFMRPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$INCRELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'HH Income Relative to FMR (Percent)', xlab='INCRELFMRPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$INCRELFMRPCT,xlab='FMTOWNRENT',ylab='INCRELFMRPCT')
+
+
+hist(hads2013n_c$COST06RELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost06 Relative to Median Income (Percent)', xlab='COST06RELAMIPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST06RELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost06 Relative to Median Income (Percent)', xlab='COST06RELAMIPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST06RELAMIPCT,xlab='FMTOWNRENT',ylab='COST06RELAMIPCT')
+
+
+hist(hads2013n_c$COST06RELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost06 Relative to Poverty Income (Percent)', xlab='COST06RELPOVPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST06RELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost06 Relative to Poverty Income (Percent)', xlab='COST06RELPOVPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST06RELPOVPCT,xlab='FMTOWNRENT',ylab='COST06RELPOVPCT')
+
+
+hist(hads2013n_c$COST06RELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost06 Relative to FMR (Percent)', xlab='COST06RELFMRPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST06RELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost06 Relative to FMR (Percent)', xlab='COST06RELFMRPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST06RELFMRPCT,xlab='FMTOWNRENT',ylab='COST06RELFMRPCT')
+
+
+hist(hads2013n_c$COST08RELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost08 Relative to Median Income (Percent)', xlab='COST08RELAMIPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST08RELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost08 Relative to Median Income (Percent)', xlab='COST08RELAMIPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST08RELAMIPCT,xlab='FMTOWNRENT',ylab='COST08RELAMIPCT')
+
+
+hist(hads2013n_c$COST08RELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost08 Relative to Poverty Income (Percent)', xlab='COST08RELPOVPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST08RELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost08 Relative to Poverty Income (Percent)', xlab='COST08RELPOVPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST08RELPOVPCT,xlab='FMTOWNRENT',ylab='COST08RELPOVPCT')
+
+
+hist(hads2013n_c$COST08RELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost08 Relative to FMR (Percent)', xlab='COST08RELFMRPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST08RELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost08 Relative to FMR (Percent)', xlab='COST08RELFMRPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST08RELFMRPCT,xlab='FMTOWNRENT',ylab='COST08RELFMRPCT')
+
+
+hist(hads2013n_c$COST12RELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost12 Relative to Median Income (Percent)', xlab='COST12RELAMIPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST12RELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost12 Relative to Median Income (Percent)', xlab='COST12RELAMIPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST12RELAMIPCT,xlab='FMTOWNRENT',ylab='COST12RELAMIPCT')
+
+
+hist(hads2013n_c$COST12RELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost12 Relative to Poverty Income (Percent)', xlab='COST12RELPOVPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST12RELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost12 Relative to Poverty Income (Percent)', xlab='COST12RELPOVPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST12RELPOVPCT,xlab='FMTOWNRENT',ylab='COST12RELPOVPCT')
+
+
+hist(hads2013n_c$COST12RELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'Cost12 Relative to FMR (Percent)', xlab='COST12RELFMRPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COST12RELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'Cost12 Relative to FMR (Percent)', xlab='COST12RELFMRPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COST12RELFMRPCT,xlab='FMTOWNRENT',ylab='COST12RELFMRPCT')
+
+
+hist(hads2013n_c$COSTMedRELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'CostMed Relative to Median Income (Percent)', xlab='COSTMedRELAMIPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COSTMedRELAMIPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'CostMed Relative to Median Income (Percent)', xlab='COSTMedRELAMIPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COSTMedRELAMIPCT,xlab='FMTOWNRENT',ylab='COSTMedRELAMIPCT')
+
+
+hist(hads2013n_c$COSTMedRELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'CostMed Relative to Poverty Income (Percent)', xlab='COSTMedRELPOVPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COSTMedRELPOVPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'CostMed Relative to Poverty Income (Percent)', xlab='COSTMedRELPOVPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COSTMedRELPOVPCT,xlab='FMTOWNRENT',ylab='COSTMedRELPOVPCT')
+
+
+hist(hads2013n_c$COSTMedRELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'1 Owner'")],main= 'CostMed Relative to FMR (Percent)', xlab='COSTMedRELFMRPCT', ylab='Count',col ='blue')
+hist(hads2013n_c$COSTMedRELFMRPCT[which(hads2013n_c$FMTOWNRENT =="'2 Renter'")],main= 'CostMed Relative to FMR (Percent)', xlab='COSTMedRELFMRPCT', ylab='Count',col ='red')
+plot(hads2013n_c$FMTOWNRENT,hads2013n_c$COSTMedRELFMRPCT,xlab='FMTOWNRENT',ylab='COSTMedRELFMRPCT')
+
+
+
+```
+##from all the graphs above, remove low significant attributes,
+## atributes that contains excessive outlier
+```{r echo=TRUE}
+hads2013n_c <- subset(hads2013n_c,select = -c(REGION,FMTZADEQ,LMED, L30,L50,L80,IPOV,TYPE,NUNITS,ZINC2,OTHERCOST,COST06,COST12,COST08,COSTMED,GL30,GL50,GL80,APLMED, ABL50,BURDEN,INCRELAMIPCT,INCRELPOVPCT,INCRELFMRPCT,COST06RELAMIPCT,COST06RELPOVPCT,COST06RELFMRPCT,COST08RELAMIPCT,COST08RELPOVPCT,COST08RELFMRPCT,COST12RELAMIPCT,COST12RELPOVPCT,COST12RELFMRPCT,COSTMedRELAMIPCT,COSTMedRELPOVPCT,COSTMedRELFMRPCT))
+
+```
+
+##Separate the dataset into 75% of training and 25%of testing
+```{r echo=TRUE}
+set.seed(888)
+sample <- sample.int(n = nrow(hads2013n_c), size = floor(.75*nrow(hads2013n_c)), replace = F)
+train <- hads2013n_c[sample, ]
+test  <- hads2013n_c[-sample, ]
+plot(train$FMTOWNRENT)
+plot(test$FMTOWNRENT)
+```
+
+
+##Start to do the logistic regression on the training dataset
+##run the glm
+```{r echo=TRUE}
+fullmod = glm(FMTOWNRENT ~ .,data=train,family=binomial(link = "logit"))
+summary(fullmod)
+#AIC 6097.5
+
+## check the summary and notice lots of variance are significant
+## and create reduce model by remove all non-significant variables
+redmod = glm(FMTOWNRENT ~ AGE1 + FMR + ROOMS + WEIGHT + PER + ZSMHC + 
+    UTILITY + TOTSAL + GLMED + ABL80 + ABLMED + FMTINCRELAMICAT + FMTBURDEN,family=binomial(link = "logit"),data=train)
+summary(redmod)
+#AIC 33486
+
+## go back and use backstep on fullmod
+## #stepwise selection method is applying in next step.
+backwards = step(fullmod) #backwards stepwise selection
+summary(backwards)
+
+
+```
+
+
+##After the Logistic is created, compare it with the test data
+```{r echo=TRUE}
+predTst <- predict(backwards, test, type="response")
+thresh  <- 0.5            # threshold for categorizing predicted probabilities
+predFac <- cut(predTst, breaks=c(-Inf, thresh, Inf), labels=c("'1 Owner'", "'2 Renter'"))
+cTab    <- table(test$FMTOWNRENT,predFac, dnn=c("actual", "predicted"))
+addmargins(cTab)
+
+
+addmargins(prop.table(cTab))
+
+##Predictive rate
+spt <- prop.table(cTab)
+sp = spt[1,1]+spt[2,2]
+sp*100
+
+
+
+
